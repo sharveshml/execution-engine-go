@@ -73,21 +73,21 @@ func HandleWebSocket(conn *websocket.Conn, replId string, file *[]File) {
 
 		switch event {
 		case "disconnect":
-			handleDisconnect(conn)
+			HandleDisconnect(conn)
 		case "fetchDir":
-			handleFetchDir(conn)
+			HandleFetchDir(conn, replId)
 		case "fetchContent":
 			path, _ := msg["path"].(string)
-			handleFetchContent(conn, path)
+			HandleFetchContent(conn, path)
 		case "updateContent":
 			path, _ := msg["path"].(string)
 			content, _ := msg["content"].(string)
-			handleUpdateContent(conn, path, content, replId)
+			HandleUpdateContent(conn, path, content, replId)
 		case "requestTerminal":
-			handleRequestTerminal(conn, replId)
+			HandleRequestTerminal(conn, replId)
 		case "terminalData":
 			data, _ := msg["data"].(string)
-			handleTerminalData(conn, data)
+			HandleTerminalData(conn, data)
 		default:
 			log.Println("Unknown event: ", event)
 		}

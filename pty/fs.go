@@ -2,6 +2,7 @@ package pty
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -39,4 +40,21 @@ func FetchDir(path string) (*[]File, error) {
 		files = append(files, file)
 	}
 	return &files, err
+}
+
+func FetchFileContent(filePath string) []byte {
+	if _, err := os.Stat(filePath); err == nil {
+		content, err := os.ReadFile(filePath)
+
+		if err != nil {
+			log.Println("Error reading the file")
+		}
+
+		return content
+
+	} else {
+		log.Println("File not found to fetch contents")
+	}
+
+	return nil
 }
