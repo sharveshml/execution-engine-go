@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/gorilla/websocket"
 )
 
 type File struct {
@@ -57,4 +59,34 @@ func FetchFileContent(filePath string) []byte {
 	}
 
 	return nil
+}
+
+func SaveFile(filePath string, content *os.File) error {
+	updatedFile, err := os.Open(filePath)
+	if err != nil {
+		log.Println("Error opening the file")
+	}
+	defer updatedFile.Close()
+
+	contentBytes, err := ioutil.ReadAll(content)
+	if err != nil {
+		log.Println("Error reading the file content")
+		return err
+	}
+	_, err = updatedFile.WriteAt(contentBytes, 0)
+	if err != nil {
+		log.Println("Error writing to the file")
+	}
+
+	return nil
+}
+
+func Write(conn *websocket.Conn, data string) {
+	if data == "" {
+		return
+	}
+	conn.WriteJSON(map[string]interface{}{
+		"event": "terminal",
+		"data":  data,
+	})
 }

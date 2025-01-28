@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/internal/uuid"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -42,14 +41,15 @@ func HandleUpdateContent(conn *websocket.Conn, path string, content string, repl
 	filePath := filepath.Join(dir, "pty", "workspace")
 	log.Println("File path: ", filePath)
 
-	if err := SaveFile(filePath, content); err != nil {
-		log.Println("Error updating the file content", err)
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		log.Println("Error writing file: ", err)
+		return
 	}
 }
 
 func HandleRequestTerminal(conn *websocket.Conn, replId string) {
 	id := uuid.New()
-	NewTerminalManager().CreatePty(id.string, "sharvesh", func(data string, id int) {
+	NewTerminalManager().CreatePty(id.String(), "sharvesh", func(data string, id int) {
 		conn.WriteJSON(map[string]interface{}{
 			"event": "terminal",
 			"data":  data,
@@ -58,5 +58,5 @@ func HandleRequestTerminal(conn *websocket.Conn, replId string) {
 }
 
 func HandleTerminalData(conn *websocket.Conn, data string) {
-	TerminalManager.Write(conn, data)
+	Write(conn, data)
 }
