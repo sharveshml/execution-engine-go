@@ -27,49 +27,43 @@ func NewTerminalManager() *TerminalManager {
 	}
 }
 
-func (tm *TerminalManager) CreatePty(id string, replId string, onData func(data string, id int)) (*os.File, error) {
+func (tm *TerminalManager) CreatePty(terminalID string, replID string, onData func(data string, terminalID string)) (*os.File, error) {
 	cmd := exec.Command(SHELL)
-
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		return nil, err
 	}
 
 	tm.mu.Lock()
-	tm.sessions[id] = &Session{
+	tm.sessions[terminalID] = &Session{
 		Terminal: ptmx,
-		ReplID:   replId,
+		ReplID:   replID,
 	}
 	tm.mu.Unlock()
 
+	// Read from PTY and send data back via onData
 	go func() {
+		defer ptmx.Close()
 		buf := make([]byte, 1024)
 		for {
 			n, err := ptmx.Read(buf)
 			if err != nil {
 				break
 			}
-			onData(string(buf[:n]), cmd.Process.Pid)
+			onData(string(buf[:n]), terminalID)
 		}
-	}()
-
-	go func() {
-		cmd.Wait()
-		tm.mu.Lock()
-		delete(tm.sessions, id)
-		tm.mu.Unlock()
 	}()
 
 	return ptmx, nil
 }
 
-func (tm *TerminalManager) Write(terminalId string, data string) error {
+func (tm *TerminalManager) Write(terminalID string, data string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
-	session, exists := tm.sessions[terminalId]
+	session, exists := tm.sessions[terminalID]
 	if !exists {
-		return fmt.Errorf("session not found")
+		return fmt.Errorf("terminal session not found")
 	}
 
 	_, err := session.Terminal.Write([]byte(data))

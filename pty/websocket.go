@@ -87,7 +87,8 @@ func HandleWebSocket(conn *websocket.Conn, replId string, file *[]File) {
 			HandleRequestTerminal(conn, replId)
 		case "terminalData":
 			data, _ := msg["data"].(string)
-			HandleTerminalData(conn, data)
+			terminalId, _ := msg["terminalId"].(string)
+			HandleTerminalData(conn, data, terminalId)
 		default:
 			log.Println("Unknown event: ", event)
 		}

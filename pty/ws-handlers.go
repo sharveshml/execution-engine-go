@@ -1,6 +1,7 @@
 package pty
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var terminalManager = NewTerminalManager()
+
 func HandleDisconnect(conn *websocket.Conn) {
 	log.Println("Client disconnected")
 	conn.Close()
@@ -16,7 +19,9 @@ func HandleDisconnect(conn *websocket.Conn) {
 
 func HandleFetchDir(conn *websocket.Conn, replId string) {
 	log.Println("Fetching directory")
-	dirPath := filepath.Join("os.Getwd()", "pty", "workspace")
+	dir, _ := os.Getwd()
+	dirPath := filepath.Join(dir, "pty", "workspace")
+	fmt.Println(dirPath)
 	files, err := FetchDir(dirPath)
 
 	if err != nil {
@@ -33,30 +38,48 @@ func HandleFetchContent(conn *websocket.Conn, path string) {
 }
 
 func HandleUpdateContent(conn *websocket.Conn, path string, content string, replId string) {
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Println("Error getting current working directory: ", err)
-		return
-	}
-	filePath := filepath.Join(dir, "pty", "workspace")
-	log.Println("File path: ", filePath)
+	log.Println("File path: ", path)
 
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		log.Println("Error writing file: ", err)
 		return
 	}
+
+	conn.WriteMessage(websocket.TextMessage, []byte("File updated successfully"))
 }
 
 func HandleRequestTerminal(conn *websocket.Conn, replId string) {
-	id := uuid.New()
-	NewTerminalManager().CreatePty(id.String(), "sharvesh", func(data string, id int) {
+	terminalID := uuid.New().String()
+
+	_, err := terminalManager.CreatePty(terminalID, replId, func(data string, terminalID string) {
 		conn.WriteJSON(map[string]interface{}{
-			"event": "terminal",
-			"data":  data,
+			"event":      "terminal",
+			"terminalID": terminalID,
+			"data":       data,
 		})
+	})
+
+	if err != nil {
+		log.Printf("Failed to create PTY: %v", err)
+		conn.WriteJSON(map[string]interface{}{
+			"event": "terminalError",
+			"error": "Failed to create terminal",
+		})
+		return
+	}
+
+	conn.WriteJSON(map[string]interface{}{
+		"event":      "terminalCreated",
+		"terminalID": terminalID,
 	})
 }
 
-func HandleTerminalData(conn *websocket.Conn, data string) {
-	Write(conn, data)
+func HandleTerminalData(conn *websocket.Conn, data string, terminalID string) {
+	if err := terminalManager.Write(terminalID, data); err != nil {
+		log.Printf("Error writing to terminal %s: %v", terminalID, err)
+		conn.WriteJSON(map[string]interface{}{
+			"event": "terminalError",
+			"error": err.Error(),
+		})
+	}
 }
