@@ -41,7 +41,6 @@ func (tm *TerminalManager) CreatePty(terminalID string, replID string, onData fu
 	}
 	tm.mu.Unlock()
 
-	// Read from PTY and send data back via onData
 	go func() {
 		defer ptmx.Close()
 		buf := make([]byte, 1024)
